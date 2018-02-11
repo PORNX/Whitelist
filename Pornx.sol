@@ -30,43 +30,38 @@ library SafeMath {
 contract Pornx {
     using SafeMath for uint256;
     enum States {
-        Initial, // deployment time
         PreSale, // accept funds, update balances
-        Underfunded, // refund to investors
         Funded // payout to holder
     }
-    string public constant name = "PORNX";
-    string public constant symbol = "PORNX";
     // 02/08/2018 10:00:00 GMT+8
-    uint public constant start_timestamp = 1518055200;
-    // 02/10/2018 23:59:59 GMT+8
-    uint public constant end_timestamp = 1518278399;
+    uint256 public constant start_timestamp = 1518055200;
+    // 02/12/2018 23:59:59 GMT+8
+    uint256 public constant end_timestamp = 1518451199;
     States public state;        
     uint256 public currentEth;
     uint256 public currentCoins;
     uint256 public currentCoinsWithBonuses;
     uint256 public maxCoinsWithBonuses;
-    uint256 public minCoinsCap;
+    uint8 public decimals;
     address public initialHolder;
     mapping (address => uint256) public balances;
     mapping (address => uint256) public balances_eth;
     function Pornx() 
     public 
     {
+        decimals = 18;
         currentEth = 0;
         currentCoins = 0;
         currentCoinsWithBonuses = 0;
         initialHolder = msg.sender;
-        state = States.Initial;
-        maxCoinsWithBonuses = 15000000;
-        minCoinsCap = 4500000;
+        state = States.PreSale;
+        maxCoinsWithBonuses = 15000000 * 10**18;
     }
-    event Credited(address addr, uint balance, uint txAmount, uint bonusWas);
-    event StateTransition(States oldState, States newState);
     modifier requireState(States _requiredState) {
         require(state == _requiredState);
         _;
     }
+    //0.05 min
     modifier minAmount(uint256 amount) {
         require(amount >= 50000000000000000);
         _;
@@ -75,19 +70,8 @@ contract Pornx {
         require(msg.sender == initialHolder);
         _;
     }
-    function requestRefund()
-    requireState(States.Underfunded)
-    public
-    {
-        require(balances_eth[msg.sender] > 0);
-        uint256 payout = balances_eth[msg.sender];
-        balances_eth[msg.sender] = 0;
-        balances[msg.sender] = 0;
-        msg.sender.transfer(payout);
-    }
     function requestPayout(uint256 _amount)
     onlyOwner
-    requireState(States.Funded)
     public
     {
         msg.sender.transfer(_amount);
@@ -95,28 +79,14 @@ contract Pornx {
     function check()
     public 
     {
-        if (now < start_timestamp) {
-            state = States.Initial;
-        } else if (now < end_timestamp) {
-            if (currentCoins < maxCoinsWithBonuses) {
-                state = States.PreSale;
-            } else {
-                state = States.Funded;
-            }
-        } else {
-            if (currentCoins > minCoinsCap) {
-                state = States.Funded;   
-            } else {
-                state = States.Initial;    
-            }
+        if (now > end_timestamp || currentCoinsWithBonuses > maxCoinsWithBonuses) {
+            state = States.Funded;
         }
     }
     function moveToState(States _newState)
     onlyOwner
-    requireState(States.Initial)
     public
     {
-        StateTransition(state, _newState);
         state = _newState;
     }
     function() payable
@@ -124,14 +94,18 @@ contract Pornx {
     minAmount(msg.value)
     public
     {
-        uint256 _coinIncrease = msg.value * 3000 / 1000000000000000000 ;
-        uint256 _coinBonus = _coinIncrease * 35 / 100;
+        uint8 bonus = 35;
+        //5 eth
+        if (msg.value >= 5000000000000000000) {
+          bonus = 40;
+        }
+        uint256 _coinIncrease = msg.value * 3000 ;
+        uint256 _coinBonus = _coinIncrease * bonus / 100;
         require (maxCoinsWithBonuses - currentCoinsWithBonuses >= _coinIncrease + _coinBonus);
         currentEth += msg.value;
         currentCoins += _coinIncrease;
         currentCoinsWithBonuses += _coinIncrease + _coinBonus;
         balances[msg.sender] += _coinIncrease + _coinBonus;
         balances_eth[msg.sender] += msg.value;
-        Credited(msg.sender, _coinIncrease + _coinBonus, msg.value, _coinBonus);
     }
 }
