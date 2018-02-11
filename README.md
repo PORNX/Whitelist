@@ -1,2 +1,2 @@
-# Whitelist Ethereum smart contract of PORNX Project
-This is Ethereum for PORNX Whitelist, available at 0xca3fb8c2fde9ed7cfe823178d94e04dd5da2550c
+# Whitelist(Private Sale) - Ethereum smart contract of PORNX Project
+This is Ethereum for PORNX Whitelist, available at 0x4aD9cDdc4a4d550271183bF0AAfd5BC0323fbF52
